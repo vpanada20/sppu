@@ -1,0 +1,142 @@
+#include<stdio.h>
+#include<stdlib.h>
+#include<sys/time.h>
+
+#define VECTORSIZE 	2000  // Size of the matrices (VECTORSIZE x VECTORSIZE)
+#define NUM_THDS	256   // Number of threads per block
+
+// CUDA kernel to perform matrix multiplication
+__global__ void matmul(int *A, int *B, int *C)
+{
+	// Calculate the global thread ID
+	int myid = blockIdx.x*blockDim.x + threadIdx.x;
+	// Calculate row (i) and column (j) for the C matrix element
+	int i = myid / VECTORSIZE;	
+	int j = myid % VECTORSIZE;
+	int k;
+	int sum = 0;
+	
+	// Only process the elements within the bounds of the matrices
+	if(myid < (VECTORSIZE * VECTORSIZE))
+	{
+		// Perform the dot product for matrix multiplication
+		for(k = 0; k < VECTORSIZE; k++)
+		{
+			sum = sum + A[i*VECTORSIZE + k] * B[k*VECTORSIZE + j];	
+		}
+		// Store the result in the C matrix
+		C[i*VECTORSIZE + j] = sum;
+	}
+}
+
+int main(int argc, char **argv)
+{
+	int i, j;
+	int *A, *B, *C, *Ad, *Bd, *Cd;		
+	double exe_time;
+	int sum, k;
+	struct timeval stop_time, start_time;
+	
+	// Allocate memory for matrices A, B, and C on the host
+	A = (int *)malloc(VECTORSIZE * VECTORSIZE * sizeof(int));
+	B = (int *)malloc(VECTORSIZE * VECTORSIZE * sizeof(int));
+	C = (int *)malloc(VECTORSIZE * VECTORSIZE * sizeof(int));
+	
+	// Initialize matrices A, B with 1 and C with 0
+	for(i = 0; i < VECTORSIZE; i++)
+	{
+		for(j = 0; j < VECTORSIZE; j++)
+		{
+			A[i * VECTORSIZE + j] = 1;
+			B[i * VECTORSIZE + j] = 1;
+			C[i * VECTORSIZE + j] = 0;	
+		}
+	}
+	
+	// Start timer to measure execution time
+	gettimeofday(&start_time, NULL);
+	
+	// Calculate total threads and blocks for CUDA kernel
+	int total_threads = VECTORSIZE * VECTORSIZE;
+	int num_thds_per_block = NUM_THDS; 
+	int num_blocks = total_threads / num_thds_per_block + 1;
+	
+	// Allocate memory on the device for matrices A, B, and C
+	cudaMalloc(&Ad, VECTORSIZE * VECTORSIZE * sizeof(int));
+	cudaMemcpy(Ad, A, VECTORSIZE * VECTORSIZE * sizeof(int), cudaMemcpyHostToDevice);
+	
+	cudaMalloc(&Bd, VECTORSIZE * VECTORSIZE * sizeof(int));
+	cudaMemcpy(Bd, B, VECTORSIZE * VECTORSIZE * sizeof(int), cudaMemcpyHostToDevice);
+	
+	cudaMalloc(&Cd, VECTORSIZE * VECTORSIZE * sizeof(int));
+	
+	// Call the CUDA kernel to perform matrix multiplication
+	matmul<<<num_blocks, num_thds_per_block>>>(Ad, Bd, Cd);
+	
+	// Copy the result matrix C from device to host
+	cudaMemcpy(C, Cd, VECTORSIZE * VECTORSIZE * sizeof(int), cudaMemcpyDeviceToHost);
+	
+	// (Optional) Verify the result with a CPU-based matrix multiplication
+	for(i = 0; i < VECTORSIZE; i++)
+	{
+		for(j = 0; j < VECTORSIZE; j++)
+		{
+			sum = 0;
+			for(k = 0; k < VECTORSIZE; k++)
+			{
+				sum = sum + A[i * VECTORSIZE + k] * B[k * VECTORSIZE + j];	
+			}
+			C[i * VECTORSIZE + j] = sum;
+		}
+	}
+	
+	// Stop the timer and calculate execution time
+	gettimeofday(&stop_time, NULL);	
+	exe_time = (stop_time.tv_sec + (stop_time.tv_usec / 1000000.0)) - (start_time.tv_sec + (start_time.tv_usec / 1000000.0));
+	
+	// (Optional) Print the resulting C matrix
+	/*printf("\n C matrix:\n");
+	for(i = 0; i < VECTORSIZE; i++)
+	{
+		for(j = 0; j < VECTORSIZE; j++)
+		{
+			printf("\t%d ", C[i*VECTORSIZE+j]);	
+		}
+		printf("\n");
+	}*/
+	
+	// Output a specific element of C for quick validation
+	printf("\nC[5*VECTORSIZE+5] = %d ", C[5*VECTORSIZE + 5]);	
+	
+	// Print the execution time of the program
+	printf("\n Execution time is = %lf seconds\n", exe_time);
+	
+	// Print a message indicating the program has finished
+	printf("\nProgram exit!\n");
+	
+	// Free memory allocated on the host and device
+	free(A); 
+	free(B);
+	free(C);
+	cudaFree(Ad); 
+	cudaFree(Bd);
+	cudaFree(Cd);
+}
+
+
+
+1. `ssh 172.60.8.97`
+
+2. Enter password.
+
+3. `touch file_name.cu`
+
+4. `vim file_name.cu`
+
+5. Press 'i' (insert mode), press 'ESC' when done.
+
+6. `:wq`
+
+7. `nvcc file_name.cu -o obj_name`
+
+8. `./obj_name`
