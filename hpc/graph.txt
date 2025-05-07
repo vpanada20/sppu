@@ -1,0 +1,142 @@
+#include <iostream>
+#include <queue>
+#include <vector>
+#include <omp.h>
+using namespace std;
+
+const int MAX_V = 100, MAX_ADJ = 100;
+
+struct Graph {
+    int V, adj[MAX_V][MAX_ADJ], adjSize[MAX_V]{};
+
+    Graph(int V) : V(V) {}
+
+    void addEdge(int u, int v) {
+        adj[u][adjSize[u]++] = v;
+        adj[v][adjSize[v]++] = u;
+    }
+
+    // --- Serial BFS ---
+    void BFS_serial(int start) {
+        bool visited[MAX_V] = {};
+        queue<int> q;
+        visited[start] = true;
+        q.push(start);
+
+        double start_time = omp_get_wtime();
+
+        while (!q.empty()) {
+            int u = q.front(); q.pop();
+            for (int i = 0; i < adjSize[u]; ++i) {
+                int v = adj[u][i];
+                if (!visited[v]) {
+                    visited[v] = true;
+                    q.push(v);
+                }
+            }
+        }
+
+        double end_time = omp_get_wtime();
+        cout << "Serial BFS completed in " << (end_time - start_time) << " seconds." << endl;
+    }
+
+    // --- Parallel BFS ---
+    void BFS_parallel(int start) {
+        bool visited[MAX_V] = {};
+        queue<int> q;
+        visited[start] = true;
+        q.push(start);
+
+        double start_time = omp_get_wtime();
+
+        while (!q.empty()) {
+            int u = q.front(); q.pop();
+
+            // Parallelizing the for loop that processes neighbors of the current node
+            #pragma omp parallel for
+            for (int i = 0; i < adjSize[u]; ++i) {
+                int v = adj[u][i];
+                if (!visited[v]) {
+                    #pragma omp critical
+                    {
+                        if (!visited[v]) {
+                            visited[v] = true;
+                            q.push(v);
+                        }
+                    }
+                }
+            }
+        }
+
+        double end_time = omp_get_wtime();
+        cout << "Parallel BFS completed in " << (end_time - start_time) << " seconds." << endl;
+    }
+
+    // --- Serial DFS ---
+    void DFS_serial(int start) {
+        bool visited[MAX_V] = {};
+        double start_time = omp_get_wtime();
+        DFSUtil_serial(start, visited);
+        double end_time = omp_get_wtime();
+        cout << "Serial DFS completed in " << (end_time - start_time) << " seconds." << endl;
+    }
+
+    void DFSUtil_serial(int u, bool visited[]) {
+        if (visited[u]) return;
+        visited[u] = true;
+        for (int i = 0; i < adjSize[u]; ++i) {
+            DFSUtil_serial(adj[u][i], visited);
+        }
+    }
+
+    // --- Parallel DFS ---
+    void DFS_parallel(int start) {
+        bool visited[MAX_V] = {};
+        double start_time = omp_get_wtime();
+        DFSUtil_parallel(start, visited);
+        double end_time = omp_get_wtime();
+        cout << "Parallel DFS completed in " << (end_time - start_time) << " seconds." << endl;
+    }
+
+    void DFSUtil_parallel(int u, bool visited[]) {
+        #pragma omp critical
+        visited[u] = true;
+
+        #pragma omp parallel for
+        for (int i = 0; i < adjSize[u]; ++i) {
+            int v = adj[u][i];
+            if (!visited[v]) {
+                DFSUtil_parallel(v, visited);
+            }
+        }
+    }
+};
+
+int main() {
+    int V;
+    cout << "Enter the number of vertices: ";
+    cin >> V;
+
+    Graph g(V);
+
+    int edgeCount;
+    cout << "Enter the number of edges: ";
+    cin >> edgeCount;
+
+    cout << "Enter the edges (in format 'source destination'): \n";
+    for (int i = 0; i < edgeCount; i++) {
+        int u, v;
+        cin >> u >> v;
+        g.addEdge(u, v);
+    }
+
+    cout << "\n--- Serial Traversals ---\n";
+    g.BFS_serial(0);
+    g.DFS_serial(0);
+
+    cout << "\n--- Parallel Traversals ---\n";
+    g.BFS_parallel(0);
+    g.DFS_parallel(0);
+
+    return 0;
+}
