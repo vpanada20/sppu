@@ -1,0 +1,79 @@
+#include<stdio.h>
+#include<stdlib.h>
+
+// CUDA kernel function to add elements of two arrays
+__global__ void arradd(int* md, int* nd, int* pd)
+{
+    // Calculate unique thread ID based on block and thread index
+    int myid = blockIdx.x * blockDim.x + threadIdx.x;
+    
+    // Perform addition of corresponding elements from md and nd and store result in pd
+    pd[myid] = md[myid] + nd[myid];
+}
+
+int main()
+{
+    // Define the size of arrays (2000 elements of type int)
+    int size = 2000 * sizeof(int);
+    
+    // Declare arrays for host and device memory
+    int m[2000], n[2000], p[2000], *md, *nd, *pd;
+    int i = 0;
+
+    // Initialize arrays m and n with values from 0 to 1999
+    for(i = 0; i < 2000; i++)
+    {
+        m[i] = i;  // Assign value i to array m
+        n[i] = i;  // Assign value i to array n
+        p[i] = 0;  // Initialize array p with 0 (will store the result of addition)
+    }
+
+    // Allocate memory on the device for arrays md, nd, and pd (m, n, and p on the host)
+    cudaMalloc(&md, size);
+    cudaMemcpy(md, m, size, cudaMemcpyHostToDevice);  // Copy array m from host to device
+
+    cudaMalloc(&nd, size);
+    cudaMemcpy(nd, n, size, cudaMemcpyHostToDevice);  // Copy array n from host to device
+
+    cudaMalloc(&pd, size);  // Allocate memory for the result array on the device
+
+    // Define the grid and block dimensions for kernel execution
+    dim3 DimGrid(10, 1);      // 10 blocks in the grid (1D grid)
+    dim3 DimBlock(500, 1);    // 500 threads per block (1D block)
+
+    // Launch the CUDA kernel to add arrays md and nd and store result in pd
+    arradd<<<DimGrid, DimBlock>>>(md, nd, pd);
+
+    // Copy the result from device memory (pd) to host memory (p)
+    cudaMemcpy(p, pd, size, cudaMemcpyDeviceToHost);
+
+    // Free the device memory to avoid memory leaks
+    cudaFree(md); 
+    cudaFree(nd);
+    cudaFree(pd);
+
+    // Print the result array (p) on the host
+    for(i = 0; i < 2000; i++)
+    {
+        printf("\t%d", p[i]);  // Print each element of the result array
+    }    
+
+    return 0;  // End of program
+}
+
+
+1. `ssh 172.60.8.97`
+
+2. Enter password.
+
+3. `touch file_name.cu`
+
+4. `vim file_name.cu`
+
+5. Press 'i' (insert mode), press 'ESC' when done.
+
+6. `:wq`
+
+7. `nvcc file_name.cu -o obj_name`
+
+8. `./obj_name
