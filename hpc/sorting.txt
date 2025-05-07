@@ -1,0 +1,143 @@
+#include <iostream>
+#include <omp.h>
+#include <ctime>
+#include <algorithm>
+#include <cstdlib>
+
+using namespace std;
+
+// Bubble Sort (Sequential)
+void bubbleSortSequential(int arr[], int n) {
+    for (int i = 0; i < n - 1; ++i) {
+        for (int j = 0; j < n - i - 1; ++j) {
+            if (arr[j] > arr[j + 1]) {
+                swap(arr[j], arr[j + 1]);
+            }
+        }
+    }
+}
+
+// Bubble Sort (Parallel)
+void bubbleSortParallel(int arr[], int n) {
+    #pragma omp parallel for
+    for (int i = 0; i < n - 1; ++i) {
+        for (int j = 0; j < n - i - 1; ++j) {
+            if (arr[j] > arr[j + 1]) {
+                swap(arr[j], arr[j + 1]);
+            }
+        }
+    }
+}
+
+// Merge Function (Used by Merge Sort)
+void merge(int arr[], int left, int mid, int right) {
+    int n1 = mid - left + 1, n2 = right - mid;
+    int L[n1], R[n2];
+
+    for (int i = 0; i < n1; ++i) L[i] = arr[left + i];
+    for (int i = 0; i < n2; ++i) R[i] = arr[mid + 1 + i];
+
+    int i = 0, j = 0, k = left;
+    while (i < n1 && j < n2) {
+        arr[k++] = (L[i] <= R[j]) ? L[i++] : R[j++];
+    }
+
+    while (i < n1) arr[k++] = L[i++];
+    while (j < n2) arr[k++] = R[j++];
+}
+
+
+// Merge Sort (Sequential)
+void mergeSortSequential(int arr[], int left, int right) {
+    if (left < right) {
+        int mid = left + (right - left) / 2;
+
+        mergeSortSequential(arr, left, mid);
+        mergeSortSequential(arr, mid + 1, right);
+        merge(arr, left, mid, right);
+    }
+}
+
+// Merge Sort (Parallel)
+void mergeSortParallel(int arr[], int left, int right) {
+    if (left < right) {
+        int mid = left + (right - left) / 2;
+
+        #pragma omp parallel sections
+        {
+            #pragma omp section
+            mergeSortParallel(arr, left, mid);
+            
+            #pragma omp section
+            mergeSortParallel(arr, mid + 1, right);
+        }
+
+        merge(arr, left, mid, right);
+    }
+}
+
+void printArray(int arr[], int n) {
+    for (int i = 0; i < n; ++i) {
+        cout << arr[i] << " ";
+    }
+    cout << endl;
+}
+
+int main() {
+    int size;
+    cout << "Enter the size of the array: ";
+    cin >> size;
+
+    // Dynamic memory allocation for the array
+    int* arr = new int[size];
+
+    // Take user input for the array
+    cout << "Enter " << size << " elements for the array: ";
+    for (int i = 0; i < size; ++i) {
+        cin >> arr[i];
+    }
+
+    // Sequential Bubble Sort
+    int* arrSeq = new int[size];
+    copy(arr, arr + size, arrSeq);
+    clock_t start = clock();
+    bubbleSortSequential(arrSeq, size);
+    clock_t end = clock();
+    cout << "Sequential Bubble Sort Time: " << double(end - start) / CLOCKS_PER_SEC << " seconds.\n";
+    cout << "First 10 elements (Sequential Bubble Sort): ";
+    printArray(arrSeq, size);
+
+    // Parallel Bubble Sort
+    int* arrParallel = new int[size];
+    copy(arr, arr + size, arrParallel);
+    clock_t startParallel = clock();
+    bubbleSortParallel(arrParallel, size);
+    clock_t endParallel = clock();
+    cout << "Parallel Bubble Sort Time: " << double(endParallel - startParallel) / CLOCKS_PER_SEC << " seconds.\n";
+    cout << "First 10 elements (Parallel Bubble Sort): ";
+    printArray(arrParallel, size);
+
+    // Sequential Merge Sort
+    int* arrSeqMerge = new int[size];
+    copy(arr, arr + size, arrSeqMerge);
+    clock_t startMergeSeq = clock();
+    mergeSortSequential(arrSeqMerge, 0, size - 1);
+    clock_t endMergeSeq = clock();
+    cout << "Sequential Merge Sort Time: " << double(endMergeSeq - startMergeSeq) / CLOCKS_PER_SEC << " seconds.\n";
+    cout << "First 10 elements (Sequential Merge Sort): ";
+    printArray(arrSeqMerge, size);
+
+    // Parallel Merge Sort
+    int* arrMergeParallel = new int[size];
+    copy(arr, arr + size, arrMergeParallel);
+    clock_t startMergePar = clock();
+    mergeSortParallel(arrMergeParallel, 0, size - 1);
+    clock_t endMergePar = clock();
+    cout << "Parallel Merge Sort Time: " << double(endMergePar - startMergePar) / CLOCKS_PER_SEC << " seconds.\n";
+    cout << "First 10 elements (Parallel Merge Sort): ";
+    printArray(arrMergeParallel, size);
+
+
+
+    return 0;
+}
