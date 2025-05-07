@@ -1,0 +1,87 @@
+#include <iostream>
+#include <omp.h>
+#include <algorithm>
+
+using namespace std;
+
+
+
+int main() {
+    int SIZE;
+    cout<<"Enter Size of array: ";
+    cin>>SIZE;
+    int arr[SIZE];
+    for(int i=0;i<SIZE;i++)
+    {
+        cout<<"Pls enter element: ";
+        cin>>arr[i];
+    }
+
+    
+
+    double start, end;
+
+    // Sequential Sum
+    start = omp_get_wtime();
+    int sum_seq = 0;
+    for (int i = 0; i < SIZE; ++i) sum_seq += arr[i];
+    end = omp_get_wtime();
+    cout << "Sequential Sum: " << sum_seq << " (Time: " << end - start << " seconds)" << endl;
+
+    // Parallel Sum
+    start = omp_get_wtime();
+    int sum_par = 0;
+    #pragma omp parallel for reduction(+:sum_par)
+    for (int i = 0; i < SIZE; ++i) sum_par += arr[i];
+    end = omp_get_wtime();
+    cout << "Parallel Sum: " << sum_par << " (Time: " << end - start << " seconds)" << endl;
+
+    // Sequential Min
+    start = omp_get_wtime();
+    int min_seq = arr[0];
+    for (int i = 1; i < SIZE; ++i) min_seq = min(min_seq, arr[i]);
+    end = omp_get_wtime();
+    cout << "Sequential Min: " << min_seq << " (Time: " << end - start << " seconds)" << endl;
+
+    // Parallel Min
+    start = omp_get_wtime();
+    int min_par = arr[0];
+    #pragma omp parallel for reduction(min:min_par)
+    for (int i = 1; i < SIZE; ++i) min_par = min(min_par, arr[i]);
+    end = omp_get_wtime();
+    cout << "Parallel Min: " << min_par << " (Time: " << end - start << " seconds)" << endl;
+
+    // Sequential Max
+    start = omp_get_wtime();
+    int max_seq = arr[0];
+    for (int i = 1; i < SIZE; ++i) max_seq = max(max_seq, arr[i]);
+    end = omp_get_wtime();
+    cout << "Sequential Max: " << max_seq << " (Time: " << end - start << " seconds)" << endl;
+
+    // Parallel Max
+    start = omp_get_wtime();
+    int max_par = arr[0];
+    #pragma omp parallel for reduction(max:max_par)
+    for (int i = 1; i < SIZE; ++i) max_par = max(max_par, arr[i]);
+    end = omp_get_wtime();
+    cout << "Parallel Max: " << max_par << " (Time: " << end - start << " seconds)" << endl;
+
+    // Sequential Average
+    start = omp_get_wtime();
+    double avg_seq = 0;
+    for (int i = 0; i < SIZE; ++i) avg_seq += arr[i];
+    avg_seq /= SIZE;
+    end = omp_get_wtime();
+    cout << "Sequential Average: " << avg_seq << " (Time: " << end - start << " seconds)" << endl;
+
+    // Parallel Average
+    start = omp_get_wtime();
+    double avg_par = 0;
+    #pragma omp parallel for reduction(+:avg_par)
+    for (int i = 0; i < SIZE; ++i) avg_par += arr[i];
+    avg_par /= SIZE;
+    end = omp_get_wtime();
+    cout << "Parallel Average: " << avg_par << " (Time: " << end - start << " seconds)" << endl;
+
+    return 0;
+}
